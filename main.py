@@ -112,7 +112,7 @@ def main():
 
                 # Preview section
                 st.subheader("Preview")
-                st.video(merge_srt(uploaded_file, srt_content))
+                st.video(uploaded_file)
                 st.text_area("Transcription", txt_content, height=200)
                 
                 # Download buttons
