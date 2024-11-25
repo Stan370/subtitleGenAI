@@ -3,6 +3,7 @@ import streamlit as st
 import os
 import tempfile
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+from moviepy.config import get_setting
 import assemblyai as aai
 import time
 from datetime import timedelta
@@ -12,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 # Configure AssemblyAI
 aai.settings.api_key =  os.getenv('ASSEMBLYAI_API_KEY')  # Replace with your API key
-
+print(get_setting("FFMPEG_BINARY")) 
 config = aai.TranscriptionConfig(speaker_labels=True, language_detection=True )
 
 def generate_srt(transcript):
@@ -27,25 +28,27 @@ def generate_srt(transcript):
     return srt_content
 
 def merge_srt(video_file, srt_file):
-    # Subtitle customization options
-    st.sidebar.header("Subtitle Settings")
-    font_size = st.sidebar.slider("Font Size", 12, 48, 24,key="1")
-    font_color = st.sidebar.color_picker("Font Color", "#FFFFFF")
-    position = st.sidebar.selectbox("Position", 
-                                  ["bottom", "top", "center"],
-                                  index=0)
     
     if video_file and srt_file:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as video_tmp:
-            video_tmp.write(video_file.getvalue())
-
+        # Subtitle customization options
+        st.sidebar.header("Subtitle Settings")
+        font_size = st.sidebar.slider("Font Size", 12, 48, 24, key="font_Size")
+        font_color = st.sidebar.color_picker("Font Color", "#FFFFFF", key="font_color")
+        position = st.sidebar.selectbox("Position", 
+                                    ["bottom", "top", "center"],
+                                    index=0, key="position")
         try:
-            # Load video
-            video = VideoFileClip(video_tmp)
-            
-            # Load subtitles
-            subs = SubRipFile.open(srt_file)
-            subtitle_clips = []
+            tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+            if video_file:
+                tfile.write(video_file.getvalue())
+                video_path = tfile.name
+            else:
+                video_path = tfile._file_urls
+            video = VideoFileClip(video_path)
+            video2 = VideoFileClip(tfile)
+            st.video(video)
+            st.video(video2)
+            subs = SubRipFile.open(srt_file.name)
             
             # Position mapping
             position_mapping = {
@@ -53,10 +56,10 @@ def merge_srt(video_file, srt_file):
                 "top": ('center', 'top'),
                 "center": 'center'
             }
-            
+            subtitle_clips = []
             for sub in subs:
-                start_time = sub.start.total_seconds()
-                end_time = sub.end.total_seconds()
+                start_time = sub.start
+                end_time = sub.end
                 duration = end_time - start_time
                 
                 subtitle_clip = (TextClip(sub.text, 
@@ -65,8 +68,9 @@ def merge_srt(video_file, srt_file):
                                         color=font_color,
                                         stroke_color='black')
                                .set_position(position_mapping[position])
-                               .set_duration(duration)
-                               .set_start(start_time))
+                               .set_start(start_time)
+                               .set_duration(duration))
+                                
                 
                 subtitle_clips.append(subtitle_clip)
             
@@ -74,19 +78,18 @@ def merge_srt(video_file, srt_file):
             
             # Merge video with subtitles
             final_video = CompositeVideoClip([video] + subtitle_clips)
-            final_video.write_videofile(output_path)
+            final_video.write_videofile(output_path.name)
             video.close()
             final_video.close()
-            return output_path
+            # Read the generated video file and return its binary content
+            with open(output_path.name, 'rb') as f:
+                return f.read()  # Return binary data instead of file path
+                
         except Exception as e:
             st.error(f"Error processing video: {str(e)}")
-        finally:
-            try:
-                os.unlink(output_path)
-            except:
-                pass
+
 def main():
-    st.title("Subtitile GenAI")
+    st.title("Subtitle GenAI")
     st.write("Generate subtitles from your videos easily!")
 
     uploaded_file = st.file_uploader("Upload your video", type=['mp4', 'mkv', 'mov'])
@@ -109,7 +112,7 @@ def main():
 
                 # Preview section
                 st.subheader("Preview")
-                st.video(merge_srt(uploaded_file.getvalue(),transcript.audio_url))
+                st.video(merge_srt(uploaded_file, srt_content))
                 st.text_area("Transcription", txt_content, height=200)
                 
                 # Download buttons
@@ -129,12 +132,15 @@ def main():
                         mime="text/plain"
                     )
                 with col3:
-                    st.download_button(
-                        "Merge SRT into video",
-                        merge_srt(uploaded_file.getvalue(),srt_content),
-                        file_name="captions.cc",
-                        mime="text/plain"
-                    )
+                    # Get the merged video binary data
+                    merged_video = merge_srt(uploaded_file, srt_content)
+                    if merged_video:  # Check if merge was successful
+                        st.download_button(
+                            "Merge SRT into video",
+                            merged_video,  # Pass binary data directly
+                            file_name="video_with_subtitles.mp4",
+                            mime="video/mp4"
+                        )
          
                     
 if __name__ == "__main__":
