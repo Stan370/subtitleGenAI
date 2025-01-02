@@ -1,7 +1,9 @@
 # subtitleGenAI
 An accessibility-focused subtitle generation platform that uses AssemblyAI’s API to transcribe live audio streams into text and generate subtitles for local video content. It supports MP4, MKV, MOV formats and generates captions in SRT (with timelines), CC (closed captions), and TXT (plain text) formats.
+💯
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/c8mhq3hkx7juddwytefa.jpg" alt="Image description" style="width:50%;">
+<img width="821" alt="image" src="https://github.com/user-attachments/assets/11a8332e-2407-4671-bb25-03dc100f35a5">
 
-![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/c8mhq3hkx7juddwytefa.jpg)
 
 ```markdown
 
@@ -32,7 +34,6 @@ This project demonstrates how to resolve FFmpeg version conflicts when using Mov
    ffmpeg -version
    ```
    
-<img width="821" alt="image" src="https://github.com/user-attachments/assets/11a8332e-2407-4671-bb25-03dc100f35a5">
 
 ## Usage
 ### Setting FFmpeg Path
